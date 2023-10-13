@@ -1,8 +1,8 @@
 import threading
 import socket
 
-
-nickname = input("Choose a nick: ")
+print("Please register a nick using the command NICK nickname (Must not include space)")
+# nickname = input()
 
 bind_addr = ('127.0.0.1', 6841)
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -13,10 +13,10 @@ def receive():
     while True:
         try:
             message = client.recv(1024).decode()
-            if message == 'NICK':
-                client.send(nickname.encode())
-            else:
-                print(message)
+            # if message == 'NICK':
+            #     client.send(nickname.encode())
+            # else:
+            print(message)
         except:
             print('error')
             client.close()
@@ -25,7 +25,7 @@ def receive():
 
 def write():
     while True:
-        message = f'{nickname}: {input("")}'
+        message = input()
         client.send(message.encode())
 
 
