@@ -1,13 +1,14 @@
 import threading
 import socket
 import logging
-from Crypto.PublicKey import RSA
+import rsa
+# from Crypto.PublicKey import RSA
 from dataclasses import dataclass
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-bind_addr = ('127.0.0.1', 6841)
+bind_addr = ('127.0.0.1', 6441)
 server = socket.socket()
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(bind_addr)
@@ -79,7 +80,8 @@ def message_handle(client, addr):
         try:
             message = client.recv(1024)
             log.info(f"{message}")
-            rsa.key.PublicKey.load_pkcs1(message.encode('utf8'))
+            # log.info(f"{message.encode('utf8')}")
+            rsa.key.PublicKey.load_pkcs1(message, format='DER')
             # log.warning(f"{b}")
             log.info(f"{client}, {message}")
             # command = message.split()[0]
