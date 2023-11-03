@@ -35,6 +35,8 @@ users = {}
 
 def broadcast_all(message):
     for client in clients:
+        log.warning(f"why here")
+
         client.send(f"SERVER: {message}".encode('utf8'))
 
 
@@ -68,6 +70,8 @@ def privmsg(message):
 
     for user in users.keys():
         if users[user].user == receiver:
+            log.warning(f"privhere")
+
             users[user].client.send(f"hi please work".encode('utf8'))
             log.info(f"{command}, {receiver}, {message_to_send}")
 
@@ -78,13 +82,7 @@ def message_handle(client, addr):
     connected = True
     while connected:
         try:
-            message = client.recv(1024)
-            log.info(f"{message}")
-            # log.info(f"{message.encode('utf8')}")
-            rsa.key.PublicKey.load_pkcs1(message, format='DER')
-            # log.warning(f"{b}")
-            log.info(f"{client}, {message}")
-            # command = message.split()[0]
+            message = client.recv(1024).decode('utf8')
             user = users[addr]
 
             if ' ' not in message:
@@ -92,16 +90,18 @@ def message_handle(client, addr):
 
             if user.nick is None:
                 msg = nick_check(message, addr)
-                client.send(msg.encode('utf8'))
+                msg = msg.encode('utf8')
+                crypted_msg = rsa.encrypt(msg, user.publicKey)
+                log.warning(f"{user.publicKey}")
+                log.info(crypted_msg)
+                client.send(crypted_msg)
             elif user.user is None:
                 msg = reg_user(message, addr)
+                log.warning(f"here")
                 client.send(msg.encode('utf8'))
             else:
                 privmsg(message)
                 broadcast_all(message)
-            # # log.warning(message)
-            # client_port = client.getsockname()[1]
-            # log.info(users.get(addr))
 
             # TODO: implement PRIV message -> all in on privmsging -> encryption
         except:
@@ -122,28 +122,21 @@ def connection_handler():
     while 1:
         client, addr = server.accept()
         log.info(client)
-        log.info(f"a new client from {addr[0]}:{addr[1]} just connected")
-        log.info("waiting for message...")
-
-        # client.send('NICK'.encode())
-        # nickname = client.recv(1024).decode()
-        # nicks.append(nickname)
         clients.append(client)
-        # publicKey, privateKey = rsa.newkeys(512)
-        # client.send(privateKey)
+        log.info(f"a new client from {addr[0]}:{addr[1]} just connected")
+
+        pub_key_bytes = client.recv(1024)
+
+        pub_key = rsa.PublicKey.load_pkcs1(pub_key_bytes, format='DER')
+        log.warning(f"{pub_key}")
+
         user = User(addr[1], client)
+        user.publicKey = pub_key
         users[addr[1]] = user
 
-        # # log.info(f"{type(publicKey)}, {type(privateKey)}")
-        # log.info(f"{publicKey}")
-        # log.info(f"{privateKey}")
-
-        # test_message = 'h'.encode('utf8')
-        # test = rsa.encrypt(test_message, publicKey)
-        # log.info(f"{test}")
-        # log.info(f"{type(test)}")
         thread = threading.Thread(
             target=message_handle, args=(client, addr[1]))
+        log.info("waiting for message...")
         thread.start()
 
 
