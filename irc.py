@@ -30,55 +30,35 @@ clients = []
 users = {}
 
 
+# public_key, private_key = rsa.newkeys(
+#     2048)
+# server_pub_key_bytes = public_key.save_pkcs1(format='DER')
+
 # TODO: Add encrption for privmsg https://devguide.dev/blog/multitenant-backend-with-python-end-to-end-encryption
 # https://pycryptodome.readthedocs.io/en/latest/src/cipher/aes.html
 
 
 # TODO:
-# def broadcast_all(message):
-#     for client in clients:
-#         log.warning(f"why here")
-#         msg = message_to_send.encode('utf8')
-#             # log.warning(f"here")
-#         crypted_msg = rsa.encrypt(msg, users[user].publicKey)
-#         users[user].client.send(crypted_msg)
-#         client.send(f"SERVER: {message}".encode('utf8'))
+def broadcast_all(message):
+    for user in users.keys():
+        msg = message.encode('utf8')
+        crypted_msg = rsa.encrypt(msg, users[user].publicKey)
+        users[user].client.send(crypted_msg)
 
 
 def reg_user(message, addr):
     user = users[addr]
-    command = message.split()[0]
-    if command == 'USER':
-        username = ' '.join(message.split()[1:])
-        user.user = username
-        return f"Welcome {username}"
-    else:
-        return "Please register a user using USER username to start chatting"
-
-
-def privmsg(message):
-    command = message.split(' ')[0]
-    receiver = message.split(' ')[1].split(':')[0]
-    message_to_send = message.split(':')[1]
-
-    for user in users.keys():
-        if users[user].user == receiver:
-            # log.warning(f"privhere")
-            msg = message_to_send.encode('utf8')
-            # log.warning(f"here")
-            crypted_msg = rsa.encrypt(msg, users[user].publicKey)
-            users[user].client.send(crypted_msg)
-            # users[user].client.send(f"hi please work".encode('utf8'))
-            # log.info(f"{command}, {receiver}, {message_to_send}")
-
-    # return f"{message_to_send}"
+    username = ' '.join(message.split()[1:])
+    user.user = username
+    return f"Welcome {username}"
+    # else:
+    #     return "Please register a user using USER username to start chatting"
 
 
 def nick_check(message, addr):
     user = users[addr]
     nick = message.split()[1]
-    command = message.split()[0]
-    if command == 'NICK' and nick not in nicks:
+    if nick not in nicks:
         nicks.append(nick)
         user.nick = nick
         return "Please register a user using USER username to start chatting"
@@ -86,42 +66,55 @@ def nick_check(message, addr):
         return "Nick is in use already, please register another NICK"
 
 
+def privmsg(message, sender):
+    receiver = message.split(' ')[1].split(':')[0]
+    message_to_send = message.split(':')[1]
+    message_to_send = message_to_send.strip()
+    for user in users.keys():
+        if users[user].user == receiver:
+            message_to_send = f"{sender}: {message_to_send}"
+            msg = message_to_send.encode('utf8')
+            crypted_msg = rsa.encrypt(msg, users[user].publicKey)
+            users[user].client.send(crypted_msg)
+
+
 def message_handle(client, addr):
     connected = True
     while connected:
         try:
-            message = client.recv(1024).decode('utf8')
+            message = client.recv(1024)
+            # message = rsa.decrypt(message, private_key)
+            message = message.decode('utf8')
             user = users[addr]
-            log.info(f"line 87: {user.publicKey}")
-            log.info(f"{user.nick}")
-            log.info(f"{type(user.nick)}")
+            message = message.strip()
 
-            # if ' ' not in message:
-            #     log.info('here????')
-            #     continue
+            if not message:
+                log.warning(f"{user.user} left")
+                break
 
-            if user.nick is None:
-                # log.info('heresssss')
-                # log.info(f"{message}")
-
+            if ' ' not in message:
+                log.warning(
+                    f"User inputed invalid command or used a command wrong {message}")
+                continue
+            command = message.split()[0]
+            if user.nick is None and command == 'NICK':
                 msg = nick_check(message, addr)
                 msg = msg.encode('utf8')
-                # log.warning(f"this:{user.publicKey}")
-                # log.info(f"{rsa.encrypt(msg, user.publicKey)}")
-
                 crypted_msg = rsa.encrypt(msg, user.publicKey)
-                # log.info(f"here{crypted_msg}")
                 client.send(crypted_msg)
             elif user.user is None:
-                msg = reg_user(message, addr)
-                msg = msg.encode('utf8')
-                # log.warning(f"here")
-                crypted_msg = rsa.encrypt(msg, user.publicKey)
-                client.send(crypted_msg)
-            else:
-                # log.warning(f"hereddsadadas")
-                privmsg(message)
-                # broadcast_all(message)
+                if command == 'USER':
+                    msg = reg_user(message, addr)
+                    msg = msg.encode('utf8')
+                    crypted_msg = rsa.encrypt(msg, user.publicKey)
+                    client.send(crypted_msg)
+                else:
+                    msg = "Please register a user using USER username to start chatting"
+                    msg = msg.encode('utf8')
+                    crypted_msg = rsa.encrypt(msg, user.publicKey)
+                    client.send(crypted_msg)
+            elif command == 'PRIVMSG':
+                privmsg(message, user.user)
 
         except:
             disconnected_nick = users[addr].nick
@@ -130,13 +123,14 @@ def message_handle(client, addr):
             nicks.remove(disconnected_nick)
             client.close()
             connected = False
-            # broadcast_all(
-            #     f"{disconnected_nick} has disconncted!".encode('utf8'))
+            broadcast_all(
+                f"SERVER: {disconnected_nick} has disconncted!")
             log.info(f"{users} remaining")
 
 
 def connection_handler():
     log.info('server is open')
+
     while 1:
         client, addr = server.accept()
         log.info(client)
@@ -147,6 +141,8 @@ def connection_handler():
 
         pub_key = rsa.PublicKey.load_pkcs1(pub_key_bytes, format='DER')
         # log.warning(f"{pub_key}")
+
+        # client.send(server_pub_key_bytes)
 
         user = User(addr[1], client)
         user.publicKey = pub_key
@@ -159,4 +155,6 @@ def connection_handler():
 
 
 if __name__ == '__main__':
+    # pub, priv = rsa.newkeys(2048)
+    # server_pub_key_bytes = public_key.save_pkcs1(format='DER')
     connection_handler()
