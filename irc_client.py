@@ -25,6 +25,8 @@ def receive():
     while True:
         try:
             message = client.recv(1024)
+            # print(message)
+            # print(message.decode('utf8'))
             message = rsa.decrypt(message, private_key)
             print(message.decode('utf8'))
         except Exception as e:

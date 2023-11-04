@@ -32,15 +32,6 @@ nicks = []
 clients = []
 users = {}
 
-
-# public_key, private_key = rsa.newkeys(
-#     2048)
-# server_pub_key_bytes = public_key.save_pkcs1(format='DER')
-
-# TODO: Add encrption for privmsg https://devguide.dev/blog/multitenant-backend-with-python-end-to-end-encryption
-# https://pycryptodome.readthedocs.io/en/latest/src/cipher/aes.html
-
-
 # TODO:
 def broadcast_all(message):
     for user in users.keys():
@@ -54,8 +45,6 @@ def reg_user(message, addr):
     username = ' '.join(message.split()[1:])
     user.user = username
     return f"Welcome {username}"
-    # else:
-    #     return "Please register a user using USER username to start chatting"
 
 
 def nick_check(message, addr):
@@ -86,6 +75,8 @@ def message_handle(client, addr):
     while connected:
         try:
             message = client.recv(1024)
+            # log.info(f"{message}") #in bytes
+            # log.info(f"{message.decode('utf8')}") #invalid start byte
             message = rsa.decrypt(message, private_key)
             message = message.decode('utf8')
             user = users[addr]
@@ -143,7 +134,6 @@ def connection_handler():
         pub_key_bytes = client.recv(1024)
 
         pub_key = rsa.PublicKey.load_pkcs1(pub_key_bytes, format='DER')
-        # log.warning(f"{pub_key}")
 
         client.send(server_pub_key_bytes)
 
@@ -158,6 +148,4 @@ def connection_handler():
 
 
 if __name__ == '__main__':
-    # pub, priv = rsa.newkeys(2048)
-    # server_pub_key_bytes = public_key.save_pkcs1(format='DER')
     connection_handler()
