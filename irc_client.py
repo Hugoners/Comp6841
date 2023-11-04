@@ -17,8 +17,8 @@ public_key, private_key = rsa.newkeys(
 pub_key_send = public_key.save_pkcs1(format='DER')
 client.send(pub_key_send)
 
-# server_key_bytes = client.recv(1024)
-# server_key = rsa.PublicKey.load_pkcs1(server_key_bytes, format='DER')
+server_key_bytes = client.recv(1024)
+server_key = rsa.PublicKey.load_pkcs1(server_key_bytes, format='DER')
 
 
 def receive():
@@ -37,10 +37,10 @@ def write():
     while True:
         message = input()
         message = message.encode('utf8')
-        client.send(message)
+        # client.send(message)
 
-        # crypted_msg = rsa.encrypt(message, server_key)
-        # client.send(crypted_msg)
+        crypted_msg = rsa.encrypt(message, server_key)
+        client.send(crypted_msg)
 
 
 write_thread = threading.Thread(target=write)

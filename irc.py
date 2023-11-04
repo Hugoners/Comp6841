@@ -8,6 +8,9 @@ from dataclasses import dataclass
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
+public_key, private_key = rsa.newkeys(2048)
+server_pub_key_bytes = public_key.save_pkcs1(format='DER')
+
 bind_addr = ('127.0.0.1', 6841)
 server = socket.socket()
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -83,7 +86,7 @@ def message_handle(client, addr):
     while connected:
         try:
             message = client.recv(1024)
-            # message = rsa.decrypt(message, private_key)
+            message = rsa.decrypt(message, private_key)
             message = message.decode('utf8')
             user = users[addr]
             message = message.strip()
@@ -142,7 +145,7 @@ def connection_handler():
         pub_key = rsa.PublicKey.load_pkcs1(pub_key_bytes, format='DER')
         # log.warning(f"{pub_key}")
 
-        # client.send(server_pub_key_bytes)
+        client.send(server_pub_key_bytes)
 
         user = User(addr[1], client)
         user.publicKey = pub_key
